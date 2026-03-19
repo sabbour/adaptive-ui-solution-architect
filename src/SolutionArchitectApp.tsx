@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useRef, useSyncExternalStore } from 'react';
-import { AdaptiveApp, registerApp, registerPackWithSkills, clearAllPacks, getActivePackScope, setActivePackScope, SessionsSidebar, FileViewer, FileViewerPlaceholder, ResizeHandle, generateSessionId, saveSession, deleteSession, setSessionScope, upsertArtifact, getArtifacts, subscribeArtifacts, loadArtifactsForSession, saveArtifactsForSession, deleteArtifactsForSession, setArtifactsScope } from '@sabbour/adaptive-ui-core';
+import { AdaptiveApp, registerApp, registerPackWithSkills, clearAllPacks, getActivePackScope, setActivePackScope, registerDiagramRenderer, SessionsSidebar, FileViewer, FileViewerPlaceholder, ResizeHandle, generateSessionId, saveSession, deleteSession, setSessionScope, upsertArtifact, getArtifacts, subscribeArtifacts, loadArtifactsForSession, saveArtifactsForSession, deleteArtifactsForSession, setArtifactsScope } from '@sabbour/adaptive-ui-core';
 import type { AdaptiveUISpec } from '@sabbour/adaptive-ui-core';
 import { createAzurePack } from '@sabbour/adaptive-ui-azure-pack';
 import { createGitHubPack } from '@sabbour/adaptive-ui-github-pack';
 import { registerAzureDiagramIcons } from '@sabbour/adaptive-ui-azure-pack/diagram-icons';
+import { ArchitectureDiagram } from './ArchitectureDiagram';
 
 // Lazy pack registration — called when this app mounts, clears other app's packs
 function ensureArchitectPacks() {
@@ -12,6 +13,7 @@ function ensureArchitectPacks() {
   registerPackWithSkills(createAzurePack());
   registerPackWithSkills(createGitHubPack());
   registerAzureDiagramIcons();
+  registerDiagramRenderer(ArchitectureDiagram);
   setActivePackScope('architect');
 }
 
