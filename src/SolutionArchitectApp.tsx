@@ -241,29 +241,37 @@ export function SolutionArchitectApp() {
 
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const artifacts = useSyncExternalStore(subscribeArtifacts, getArtifacts);
-  const selectedArtifact = selectedFileId ? artifacts.find((a) => a.id === selectedFileId) || null : null;
   const sendPromptRef = useRef<((prompt: string) => void) | null>(null);
 
-  // Ensure the center viewer always opens a file when artifacts exist.
-  useEffect(() => {
-    if (selectedFileId) {
-      const stillExists = artifacts.some((a) => a.id === selectedFileId);
-      if (!stillExists) {
-        setSelectedFileId(artifacts[0]?.id || null);
-      }
-      return;
-    }
-    if (artifacts.length > 0) {
-      setSelectedFileId(artifacts[0].id);
-    }
-  }, [artifacts, selectedFileId]);
-
   // Load artifacts for the initial session on mount
-  const initialLoadRef = useRef(false);
-  if (!initialLoadRef.current) {
-    initialLoadRef.current = true;
-    loadArtifactsForSession(sessionId);
-  }
+  const initialLoadDone = useRef(false);
+  useEffect(() => {
+    if (!initialLoadDone.current) {
+      initialLoadDone.current = true;
+      loadArtifactsForSession(sessionId);
+      // Seed the initial diagram if the session has no artifacts yet
+      const loaded = getArtifacts();
+      if (loaded.length === 0 && initialSpec.diagram) {
+        upsertArtifact('architecture.mmd', initialSpec.diagram, 'mermaid', 'Solution Architecture');
+      }
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Resolve which file to show: prefer explicit selection, fall back to first artifact.
+  // Computed during render so the viewer never shows "No file selected" when files exist.
+  const resolvedFileId = (selectedFileId && artifacts.some((a) => a.id === selectedFileId))
+    ? selectedFileId
+    : artifacts[0]?.id ?? null;
+  const selectedArtifact = resolvedFileId
+    ? artifacts.find((a) => a.id === resolvedFileId) ?? null
+    : null;
+
+  // Keep selectedFileId in sync so sidebar highlights match
+  useEffect(() => {
+    if (resolvedFileId !== selectedFileId) {
+      setSelectedFileId(resolvedFileId);
+    }
+  }, [resolvedFileId, selectedFileId]);
 
   const handleCreatePR = useCallback(() => {
     if (sendPromptRef.current) {
@@ -385,8 +393,7 @@ export function SolutionArchitectApp() {
   return React.createElement('div', {
     style: {
       display: 'flex',
-      height: '100vh',
-      minHeight: '100vh',
+      height: '100%',
       width: '100%',
       overflow: 'hidden',
     } as React.CSSProperties,
@@ -404,7 +411,7 @@ export function SolutionArchitectApp() {
         onSelectSession: handleSelectSession,
         onNewSession: handleNewSession,
         onDeleteSession: handleDeleteSession,
-        selectedFileId,
+        selectedFileId: resolvedFileId,
         onSelectFile: setSelectedFileId,
         onCreatePR: handleCreatePR,
         collapsed: sidebarCollapsed,
