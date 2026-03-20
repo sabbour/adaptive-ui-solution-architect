@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useSyncExternalStore } from 'react';
+import React, { useState, useCallback, useRef, useSyncExternalStore, useEffect } from 'react';
 import { AdaptiveApp, registerApp, registerPackWithSkills, clearAllPacks, getActivePackScope, setActivePackScope, registerDiagramRenderer, SessionsSidebar, FileViewer, FileViewerPlaceholder, ResizeHandle, generateSessionId, saveSession, deleteSession, setSessionScope, upsertArtifact, getArtifacts, subscribeArtifacts, loadArtifactsForSession, saveArtifactsForSession, deleteArtifactsForSession, setArtifactsScope } from '@sabbour/adaptive-ui-core';
 import type { AdaptiveUISpec } from '@sabbour/adaptive-ui-core';
 import { createAzurePack } from '@sabbour/adaptive-ui-azure-pack';
@@ -198,21 +198,21 @@ const LANG_EXT: Record<string, string> = {
 
 const seenFilenames = new Set<string>();
 
-function codeBlockToFilename(block: CodeBlock): string {
+function buildFilename(block: CodeBlock): string {
   const ext = LANG_EXT[block.language] || block.language || 'txt';
-  let filename: string;
-
   if (block.label) {
     // If label already looks like a filename (has extension), use it directly
     if (block.label.includes('.')) {
-      filename = block.label;
-    } else {
-      const base = block.label.toLowerCase().replace(/[^a-z0-9/]+/g, '-').replace(/-+$/, '');
-      filename = `${base}.${ext}`;
+      return block.label;
     }
-  } else {
-    filename = `artifact.${ext}`;
+    const base = block.label.toLowerCase().replace(/[^a-z0-9/]+/g, '-').replace(/-+$/, '');
+    return `${base}.${ext}`;
   }
+  return `artifact.${ext}`;
+}
+
+function codeBlockToFilename(block: CodeBlock): string {
+  let filename = buildFilename(block);
 
   // Deduplicate filenames within the same spec
   if (seenFilenames.has(filename)) {
@@ -243,6 +243,20 @@ export function SolutionArchitectApp() {
   const artifacts = useSyncExternalStore(subscribeArtifacts, getArtifacts);
   const selectedArtifact = selectedFileId ? artifacts.find((a) => a.id === selectedFileId) || null : null;
   const sendPromptRef = useRef<((prompt: string) => void) | null>(null);
+
+  // Ensure the center viewer always opens a file when artifacts exist.
+  useEffect(() => {
+    if (selectedFileId) {
+      const stillExists = artifacts.some((a) => a.id === selectedFileId);
+      if (!stillExists) {
+        setSelectedFileId(artifacts[0]?.id || null);
+      }
+      return;
+    }
+    if (artifacts.length > 0) {
+      setSelectedFileId(artifacts[0].id);
+    }
+  }, [artifacts, selectedFileId]);
 
   // Load artifacts for the initial session on mount
   const initialLoadRef = useRef(false);
@@ -280,13 +294,15 @@ export function SolutionArchitectApp() {
     // Auto-save code blocks (IaC files) as artifacts
     seenFilenames.clear();
     const codeBlocks = extractCodeBlocksFromLayout(spec.layout);
+    const generatedFilenames: string[] = [];
     for (const block of codeBlocks) {
       const filename = codeBlockToFilename(block);
+      generatedFilenames.push(filename);
       upsertArtifact(filename, block.code, block.language, block.label);
     }
     // If we got new code blocks and no file is selected, select the first one
-    if (codeBlocks.length > 0 && !selectedFileId) {
-      const firstFilename = codeBlockToFilename(codeBlocks[0]);
+    if (generatedFilenames.length > 0 && !selectedFileId) {
+      const firstFilename = generatedFilenames[0];
       const arts = getArtifacts();
       const match = arts.find((a) => a.filename === firstFilename);
       if (match) setSelectedFileId(match.id);
@@ -369,7 +385,8 @@ export function SolutionArchitectApp() {
   return React.createElement('div', {
     style: {
       display: 'flex',
-      height: '100%',
+      height: '100vh',
+      minHeight: '100vh',
       width: '100%',
       overflow: 'hidden',
     } as React.CSSProperties,
