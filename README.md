@@ -1,5 +1,7 @@
 # Solution Architect Coworker
 
+[![CI](https://github.com/sabbour/adaptive-ui-solution-architect/actions/workflows/ci.yml/badge.svg)](https://github.com/sabbour/adaptive-ui-solution-architect/actions/workflows/ci.yml)
+
 An AI coworker for designing and deploying **production-grade cloud-native architectures**, built with the [Adaptive UI Framework](https://github.com/sabbour/adaptive-ui-framework).
 
 ## What It Does
