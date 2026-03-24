@@ -457,6 +457,7 @@ export function SolutionArchitectApp() {
         systemPromptSuffix: ARCHITECT_SYSTEM_PROMPT,
         sendPromptRef,
         visiblePacks: ['azure', 'github'],
+        appId: 'architect',
         theme: {
           primaryColor: '#2563eb',
           backgroundColor: '#f0f2f5',
